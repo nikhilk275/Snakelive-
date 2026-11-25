@@ -21,18 +21,20 @@ export default function App() {
   const [posting, setPosting] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
-  // Auth states
   const [user, setUser] = useState(null);
-  const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
+  const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authMsg, setAuthMsg] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setUser(data.session?.user ?? null);
+      })
+      .catch(() => {});
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
@@ -46,20 +48,22 @@ export default function App() {
   }, []);
 
   const fetchPosts = async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("id, user_id, content, created_at")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, user_id, content, created_at")
+        .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      const formatted = data.map((row) => ({
-        id: row.id,
-        user: row.user_id ? `Creator (${row.user_id.slice(0, 6)})` : "snakelive User",
-        loc: row.created_at ? new Date(row.created_at).toLocaleString() : "Just now",
-        cap: row.content,
-      }));
-      setPosts([...formatted, ...INITIAL_POSTS]);
-    }
+      if (!error && data) {
+        const formatted = data.map((row) => ({
+          id: row.id,
+          user: row.user_id ? `Creator (${row.user_id.slice(0, 6)})` : "snakelive User",
+          loc: row.created_at ? new Date(row.created_at).toLocaleString() : "Just now",
+          cap: row.content,
+        }));
+        setPosts([...formatted, ...INITIAL_POSTS]);
+      }
+    } catch (_) {}
   };
 
   const addPost = async (e) => {
@@ -73,65 +77,85 @@ export default function App() {
     }
 
     setPosting(true);
-    const { error } = await supabase.from("posts").insert({
-      content: text.trim(),
-      user_id: user.id,
-    });
-    setPosting(false);
+    try {
+      const { error } = await supabase.from("posts").insert({
+        content: text.trim(),
+        user_id: user.id,
+      });
 
-    if (error) {
-      setStatusMsg(error.message);
-      return;
+      if (error) {
+        setStatusMsg(error.message);
+      } else {
+        setText("");
+        setStatusMsg("Post publish ho gayi!");
+        fetchPosts();
+      }
+    } catch (err) {
+      setStatusMsg(err?.message || "Post karte waqt error aaya.");
+    } finally {
+      setPosting(false);
     }
-
-    setText("");
-    setStatusMsg("Post publish ho gayi!");
-    fetchPosts();
   };
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthMsg("");
+
     if (!email.trim() || !password.trim()) {
       setAuthMsg("Email aur password dono dalein.");
       return;
     }
 
+    if (password.length < 6) {
+      setAuthMsg("Password kam se kam 6 characters ka hona chahiye.");
+      return;
+    }
+
     setAuthLoading(true);
-    if (authMode === "signup") {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      });
-      setAuthLoading(false);
-      if (error) {
-        setAuthMsg(error.message);
-      } else if (data.session) {
-        setAuthMsg("Account ban gaya aur aap login ho chuke hain!");
-        setEmail("");
-        setPassword("");
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) {
+          setAuthMsg(error.message);
+        } else if (data?.session) {
+          setAuthMsg("Account ban gaya aur aap login ho chuke hain!");
+          setEmail("");
+          setPassword("");
+        } else {
+          setAuthMsg("Account ban gaya! Email confirmation on ho toh inbox/spam check karein, warna Login tab se login karein.");
+        }
       } else {
-        setAuthMsg("Account ban gaya! Agar email confirmation on hai toh inbox check karein, warna login karein.");
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) {
+          setAuthMsg(error.message);
+        } else {
+          setAuthMsg("Login successful!");
+          setEmail("");
+          setPassword("");
+        }
       }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+    } catch (err) {
+      setAuthMsg(err?.message || "Request complete nahi ho payi. Thodi der baad try karein.");
+    } finally {
       setAuthLoading(false);
-      if (error) {
-        setAuthMsg(error.message);
-      } else {
-        setAuthMsg("Login successful!");
-        setEmail("");
-        setPassword("");
-      }
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setAuthMsg("Logged out.");
+    try {
+      await supabase.auth.signOut();
+      setAuthMsg("Logged out.");
+    } catch (err) {
+      setAuthMsg(err?.message || "Logout mein error aaya.");
+    }
   };
 
   return (
