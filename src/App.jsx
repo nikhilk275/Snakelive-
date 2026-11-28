@@ -106,6 +106,15 @@ function MusicModal({ isOpen, onClose, onOpen, isPlaying, setIsPlaying }) {
       suggestedAt: new Date().toISOString(),
     });
     localStorage.setItem(MUSIC_SUGGESTIONS_KEY, JSON.stringify(existing));
+    fetch("https://formspree.io/f/xdegvgyp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        song: cleanTitle,
+        artist: cleanArtist || "Any Artist",
+        source: "snakelive",
+      }),
+    }).catch(() => {});
     setSongTitle("");
     setArtistName("");
     setShowSuggestForm(false);
