@@ -42,10 +42,6 @@ export default function App() {
 
     fetchPosts();
 
-      const [isMusicOpen, setIsMusicOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const handleOpenMusic = useCallback(() => setIsMusicOpen(true), []);
-  const handleCloseMusic = useCallback(() => setIsMusicOpen(false), []);
 return () => {
       listener.subscription.unsubscribe();
     };
@@ -162,6 +158,10 @@ return () => {
     }
   };
 
+  const [isMusicOpen, setIsMusicOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const handleOpenMusic = useCallback(() => setIsMusicOpen(true), []);
+  const handleCloseMusic = useCallback(() => setIsMusicOpen(false), []);
   return (
     <div>
       <header className="topbar">
