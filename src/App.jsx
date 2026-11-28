@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from "./supabaseClient";
 import "./index.css";
 
@@ -13,6 +13,268 @@ const STREAMS = [
   { id: 3, title: "Weekend IRL Vibes", plat: "Kick", url: "https://kick.com" },
   { id: 4, title: "Creator Live Q&A", plat: "Facebook Live", url: "https://facebook.com" },
 ];
+
+
+const MUSIC_SEEN_KEY = "snakelive_music_welcome_seen_v1";
+const MUSIC_SUGGESTIONS_KEY = "snakelive_song_suggestions_v1";
+const DEFAULT_MUSIC_TRACKS = [
+  {
+    id: "track-1",
+    title: "Late Night Vibes",
+    artist: "Snakelive Music",
+    src: "/Snakelive-/music/track1.mp3",
+  },
+  {
+    id: "track-2",
+    title: "Chill Session",
+    artist: "Snakelive Music",
+    src: "/Snakelive-/music/track2.mp3",
+  },
+];
+
+function MusicModal({ isOpen, onClose, onOpen, isPlaying, setIsPlaying }) {
+  const audioRef = useRef(null);
+  const [tracks, setTracks] = useState(DEFAULT_MUSIC_TRACKS);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showSuggestForm, setShowSuggestForm] = useState(false);
+  const [songTitle, setSongTitle] = useState("");
+  const [artistName, setArtistName] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetch("/Snakelive-/music/playlist.json")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data) && data.length > 0) {
+          setTracks(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const seen = localStorage.getItem(MUSIC_SEEN_KEY);
+    if (!seen) {
+      localStorage.setItem(MUSIC_SEEN_KEY, "true");
+      onOpen();
+    }
+  }, [onOpen]);
+
+  const currentTrack = tracks[currentIndex] || DEFAULT_MUSIC_TRACKS[0];
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.play().catch(() => {
+        setIsPlaying(false);
+        setStatusMsg("Audio file nahi mili—public/music/ mein .mp3 check karein.");
+      });
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, currentIndex, currentTrack?.src, setIsPlaying]);
+
+  const handlePlayMusic = () => {
+    setStatusMsg("");
+    setIsPlaying(true);
+    onClose();
+  };
+
+  const handleNextTrack = () => {
+    setStatusMsg("");
+    setCurrentIndex((prev) => (prev + 1) % tracks.length);
+    setIsPlaying(true);
+  };
+
+  const handleSuggestSubmit = (e) => {
+    e.preventDefault();
+    const cleanTitle = songTitle.trim();
+    const cleanArtist = artistName.trim();
+    if (!cleanTitle) {
+      setStatusMsg("Pehle favorite song ka naam likhein.");
+      return;
+    }
+    const existing = JSON.parse(localStorage.getItem(MUSIC_SUGGESTIONS_KEY) || "[]");
+    existing.unshift({
+      title: cleanTitle,
+      artist: cleanArtist || "Any Artist",
+      suggestedAt: new Date().toISOString(),
+    });
+    localStorage.setItem(MUSIC_SUGGESTIONS_KEY, JSON.stringify(existing));
+    setSongTitle("");
+    setArtistName("");
+    setShowSuggestForm(false);
+    setStatusMsg(`"${cleanTitle}" suggestion save ho gaya!`);
+  };
+
+  return (
+    <>
+      <audio
+        ref={audioRef}
+        src={currentTrack?.src}
+        preload="none"
+        onEnded={handleNextTrack}
+      />
+      {isOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(2, 6, 23, 0.78)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              backgroundColor: "#0f172a",
+              color: "#f8fafc",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              borderRadius: "16px",
+              padding: "20px",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#34d399" }}>
+                Music 🎶 • Live
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "18px", cursor: "pointer", padding: "2px 6px" }}
+                aria-label="Close music popup"
+              >
+                ✕
+              </button>
+            </div>
+
+            <h2 style={{ margin: "10px 0 6px", fontSize: "20px", fontWeight: 700 }}>
+              Live Music Chal Raha Hai 🎶
+            </h2>
+            <p style={{ margin: "0 0 14px", fontSize: "14px", lineHeight: 1.5, color: "#cbd5e1" }}>
+              Queue: <strong>{currentTrack?.title}</strong> — {currentTrack?.artist}
+            </p>
+
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handlePlayMusic}
+                style={{
+                  flex: 1,
+                  minWidth: "150px",
+                  backgroundColor: "#10b981",
+                  color: "#042f2e",
+                  fontWeight: 700,
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "11px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                ▶ Play Live Music
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusMsg("");
+                  setShowSuggestForm((prev) => !prev);
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: "150px",
+                  backgroundColor: "#1e293b",
+                  color: "#f8fafc",
+                  fontWeight: 600,
+                  border: "1px solid #334155",
+                  borderRadius: "10px",
+                  padding: "11px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Suggest Your Favorite Song
+              </button>
+            </div>
+
+            {showSuggestForm && (
+              <form
+                onSubmit={handleSuggestSubmit}
+                style={{
+                  marginTop: "14px",
+                  paddingTop: "14px",
+                  borderTop: "1px solid rgba(148, 163, 184, 0.2)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <input
+                  type="text"
+                  value={songTitle}
+                  onChange={(e) => setSongTitle(e.target.value)}
+                  placeholder="Favorite song ka naam *"
+                  style={{
+                    backgroundColor: "#020617",
+                    color: "#f8fafc",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    fontSize: "14px",
+                  }}
+                />
+                <input
+                  type="text"
+                  value={artistName}
+                  onChange={(e) => setArtistName(e.target.value)}
+                  placeholder="Artist / Mood (optional)"
+                  style={{
+                    backgroundColor: "#020617",
+                    color: "#f8fafc",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    fontSize: "14px",
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    backgroundColor: "#38bdf8",
+                    color: "#082f49",
+                    fontWeight: 700,
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Send Suggestion
+                </button>
+              </form>
+            )}
+
+            {statusMsg && (
+              <p style={{ margin: "12px 0 0", fontSize: "13px", color: "#6ee7b7" }}>
+                {statusMsg}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function App() {
   const [tab, setTab] = useState("home");
@@ -331,6 +593,8 @@ return () => {
         ))}
       </nav>
     
-      <RestaurantMusicLounge isOpen={isMusicOpen} onOpen={handleOpenMusic} onClose={handleCloseMusic} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
+      
+    
+      <MusicModal isOpen={isMusicOpen} onOpen={handleOpenMusic} onClose={handleCloseMusic} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
     </div>);
 }
