@@ -42,7 +42,11 @@ export default function App() {
 
     fetchPosts();
 
-    return () => {
+      const [isMusicOpen, setIsMusicOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const handleOpenMusic = useCallback(() => setIsMusicOpen(true), []);
+  const handleCloseMusic = useCallback(() => setIsMusicOpen(false), []);
+return () => {
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -162,7 +166,7 @@ export default function App() {
     <div>
       <header className="topbar">
         <span className="brand">snakelive</span>
-        <span className="badge">No Watermark</span>
+<button type="button" onClick={() => setIsMusicOpen(true)} style={{ backgroundColor: isPlaying ? "#10b981" : "#1e293b", color: isPlaying ? "#042f2e" : "#e2e8f0", border: "1px solid rgba(148, 163, 184, 0.3)", borderRadius: "999px", padding: "4px 10px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>{isPlaying ? "♪ Music On" : "♪ Music"}</button>
       </header>
 
       <main className="container">
@@ -326,6 +330,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-    </div>
-  );
+    
+      <RestaurantMusicLounge isOpen={isMusicOpen} onOpen={handleOpenMusic} onClose={handleCloseMusic} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
+    </div>);
 }

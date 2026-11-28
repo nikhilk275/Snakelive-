@@ -1,0 +1,14 @@
+[
+  {
+    "id": "track-1",
+    "title": "Late Night Lounge",
+    "artist": "Snakelive Lounge",
+    "src": "/Snakelive-/music/track1.mp3"
+  },
+  {
+    "id": "track-2",
+    "title": "Midnight Café Groove",
+    "artist": "Snakelive Lounge",
+    "src": "/Snakelive-/music/track2.mp3"
+  }
+]
