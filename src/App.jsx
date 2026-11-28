@@ -160,8 +160,8 @@ return () => {
 
   const [isMusicOpen, setIsMusicOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const handleOpenMusic = useCallback(() => setIsMusicOpen(true), []);
-  const handleCloseMusic = useCallback(() => setIsMusicOpen(false), []);
+  const handleOpenMusic = React.useCallback(() => setIsMusicOpen(true), []);
+  const handleCloseMusic = React.useCallback(() => setIsMusicOpen(false), []);
   return (
     <div>
       <header className="topbar">
